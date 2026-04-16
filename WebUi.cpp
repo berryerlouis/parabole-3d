@@ -36,13 +36,13 @@ String WebUi::renderRoot(const AppState& state) {
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#05060a;color:#e5e9f0;}
 .topbar{padding:10px 20px;background:#111827;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.6);}
-.statustopbar{padding:10px 20px;background:#111805;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.6);flex-direction: column;}
+.statustopbar{padding:5px 20px;background:#111805;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.6);flex-direction: column;}
 .statustopbaritem{display:flex;justify-content:space-between;align-items:center;gap: 2vw;width: 100%;}
 .title{font-size:20px;font-weight:bold;letter-spacing:1px;}
 .ip{font-size:12px;opacity:.7;}
-.container{display:flex;flex-wrap:wrap;padding:15px;gap:15px;justify-content: center;}
+.container{display:flex;flex-wrap:wrap;gap:15px;justify-content: center;}
 .container-3d{display:flex;flex-wrap:wrap;padding:15px;gap:15px;width: 66vw;}
-.container-panel{display:flex;flex-wrap:wrap;padding:15px;gap:15px;align-items: flex-start;width: 100%;}
+.container-panel{display:flex;flex-wrap:wrap;gap:15px;align-items: flex-start;width: 100%;}
 .card{background:#111827;border-radius:10px;padding:15px;box-shadow:0 2px 10px rgba(0,0,0,.7);flex:1 1 260px;min-width:260px;display: flex;flex-direction: column;align-items: stretch;}
 .card h2{margin-top:0;font-size:16px;border-bottom:1px solid #1f2937;padding-bottom:5px;margin-bottom:10px;}
 .label{font-size:12px;text-transform:uppercase;color:#9ca3af;}
@@ -243,7 +243,7 @@ function makeDish(color, wire) {
   const geo = new THREE.LatheGeometry(pts, 48);
   geo.rotateX(Math.PI / 2);
   const mat = wire
-    ? new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.2})
+    ? new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.2, side:THREE.DoubleSide})
     : new THREE.MeshPhongMaterial({color, shininess:80, side:THREE.DoubleSide});
   return new THREE.Mesh(geo, mat);
 }
@@ -296,12 +296,12 @@ scene.add(arrow);
 
 function setDishRotation(group, az, el) {
   group.rotation.order = 'YXZ';
-  group.rotation.y = THREE.MathUtils.degToRad(az);
+  group.rotation.y = -THREE.MathUtils.degToRad(az);
   group.rotation.x = -THREE.MathUtils.degToRad(el);
 }
 
 function getDishDir(az, el) {
-  const a = THREE.MathUtils.degToRad(az);
+  const a = -THREE.MathUtils.degToRad(az);
   const e = THREE.MathUtils.degToRad(el);
   return new THREE.Vector3(
     Math.cos(e) * Math.sin(a),
@@ -375,7 +375,7 @@ document.getElementById('saveParkBtn').addEventListener('click', () => {
 });
 
 updateUI();
-setInterval(fetchData, 600);
+setInterval(fetchData, 100);
 </script>
 </body>
 </html>

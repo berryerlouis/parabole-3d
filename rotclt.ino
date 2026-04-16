@@ -12,8 +12,9 @@
 #include "WebUi.h"
 
 // WiFi
-const char* ssid = "";
-const char* password = "";
+
+//const char* ssid = "";
+//const char* password = "";
 
 constexpr uint8_t LED_PIN = 2;
 

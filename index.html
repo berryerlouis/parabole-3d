@@ -112,7 +112,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
 let D = {
-  currentAz:1.0, currentEl:1.0,
+  currentAz:270.0, currentEl:1.0,
   targetAz:1.0,  targetEl:1.0,
   offsetAz:0.0,  offsetEl:0.0,
   parkAz:0.0,  parkEl:0.0,
@@ -221,7 +221,7 @@ function makeDish(color, wire) {
   const geo = new THREE.LatheGeometry(pts, 48);
   geo.rotateX(Math.PI / 2);
   const mat = wire
-    ? new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.2})
+    ? new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.2, side:THREE.DoubleSide})
     : new THREE.MeshPhongMaterial({color, shininess:80, side:THREE.DoubleSide});
   return new THREE.Mesh(geo, mat);
 }
@@ -274,12 +274,12 @@ scene.add(arrow);
 
 function setDishRotation(group, az, el) {
   group.rotation.order = 'YXZ';
-  group.rotation.y = THREE.MathUtils.degToRad(az);
+  group.rotation.y = -THREE.MathUtils.degToRad(az);
   group.rotation.x = -THREE.MathUtils.degToRad(el);
 }
 
 function getDishDir(az, el) {
-  const a = THREE.MathUtils.degToRad(az);
+  const a = -THREE.MathUtils.degToRad(az);
   const e = THREE.MathUtils.degToRad(el);
   return new THREE.Vector3(
     Math.cos(e) * Math.sin(a),
