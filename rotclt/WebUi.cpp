@@ -63,6 +63,7 @@ button:hover{background:#2563eb;}
 <body>
 <div class="topbar">
     <div class="title">Parabole Control 3D</div>
+    <button id="enableBtn">Enable Motors</button>
     <div class="statustopbar">
         <div class="statustopbaritem">
             <div class="label">Client</div>
@@ -103,6 +104,7 @@ button:hover{background:#2563eb;}
             <input type="text" id="offEl" name="el"><br>
             <button type="submit">Enregistrer</button>
             </form>
+            <button type="button" id="setParkBtn">Calibrate to Park</button>
         </div>
         <div class="card">
             <h2>Motor Drive</h2>
@@ -145,7 +147,15 @@ let D = {
   targetAz:%TAR_AZ%,  targetEl:%TAR_EL%,
   offsetAz:%OFF_AZ%,  offsetEl:%OFF_EL%,
   parkAz:%PARK_AZ%,  parkEl:%PARK_EL%,
+  enable:%ENABLE%,
   client:"%CLIENT%",  lastCmd:"%LASTCMD%"
+};
+
+const dirty = {
+  offAz: false,
+  offEl: false,
+  parkAz: false,
+  parkEl: false
 };
 
 const canvas = document.getElementById('c3d');
@@ -336,11 +346,18 @@ function updateUI() {
   const parkAzInput = document.getElementById('parkAz');
   const parkElInput = document.getElementById('parkEl');
 
-  if (document.activeElement !== offAzInput) offAzInput.value = D.offsetAz;
-  if (document.activeElement !== offElInput) offElInput.value = D.offsetEl;
-  if (document.activeElement !== parkAzInput) parkAzInput.value = D.parkAz;
-  if (document.activeElement !== parkElInput) parkElInput.value = D.parkEl;
+  if (document.activeElement !== offAzInput && !dirty.offAz) offAzInput.value = D.offsetAz;
+  if (document.activeElement !== offElInput && !dirty.offEl) offElInput.value = D.offsetEl;
+  if (document.activeElement !== parkAzInput && !dirty.parkAz) parkAzInput.value = D.parkAz;
+  if (document.activeElement !== parkElInput && !dirty.parkEl) parkElInput.value = D.parkEl;
+
+  document.getElementById('enableBtn').textContent = D.enable ? "Disable Motors" : "Enable Motors";
 }
+
+document.getElementById('offAz').addEventListener('input', () => { dirty.offAz = true; });
+document.getElementById('offEl').addEventListener('input', () => { dirty.offEl = true; });
+document.getElementById('parkAz').addEventListener('input', () => { dirty.parkAz = true; });
+document.getElementById('parkEl').addEventListener('input', () => { dirty.parkEl = true; });
 
 function fetchData() {
   fetch('/status').then(r => r.json()).then(j => { D = j; updateUI(); }).catch(() => {});
@@ -369,9 +386,30 @@ document.getElementById('goParkBtn').addEventListener('click', () => {
 });
 
 document.getElementById('saveParkBtn').addEventListener('click', () => {
-  fetch('/setpark?az=' + encodeURIComponent(document.getElementById('parkAz').value)
-    + '&el=' + encodeURIComponent(document.getElementById('parkEl').value))
-    .then(() => setTimeout(fetchData, 120));
+  const azVal = document.getElementById('parkAz').value;
+  const elVal = document.getElementById('parkEl').value;
+  const az = parseFloat(azVal);
+  const el = parseFloat(elVal);
+  if (isNaN(az) || isNaN(el)) {
+    alert('Invalid park values');
+    return;
+  }
+  fetch('/setpark?az=' + encodeURIComponent(azVal)
+    + '&el=' + encodeURIComponent(elVal))
+    .then(() => {
+      dirty.parkAz = false;
+      dirty.parkEl = false;
+      setTimeout(fetchData, 120);
+    });
+});
+
+document.getElementById('enableBtn').addEventListener('click', () => {
+  const newState = D.enable ? 0 : 1;
+  fetch('/enable?state=' + newState).then(() => setTimeout(fetchData, 300));
+});
+
+document.getElementById('setParkBtn').addEventListener('click', () => {
+  fetch('/calibrate').then(() => setTimeout(fetchData, 120));
 });
 
 updateUI();
@@ -389,6 +427,7 @@ setInterval(fetchData, 100);
   html.replace("%OFF_EL%", String(state.offsetEl, 1));
   html.replace("%PARK_AZ%", String(state.parkAz, 1));
   html.replace("%PARK_EL%", String(state.parkEl, 1));
+  html.replace("%ENABLE%", state.enable ? "1" : "0");
   html.replace("%CLIENT%", state.clientConnected ? "1" : "0");
   html.replace("%LASTCMD%", state.lastCommand);
 
@@ -405,6 +444,7 @@ String WebUi::statusJson(const AppState& state) {
   json += "\"offsetEl\":" + String(state.offsetEl,1) + ",";
   json += "\"parkAz\":" + String(state.parkAz,1) + ",";
   json += "\"parkEl\":" + String(state.parkEl,1) + ",";
+  json += "\"enable\":" + String(state.enable ? "1" : "0") + ",";
   json += "\"client\":\"" + String(state.clientConnected ? "1" : "0") + "\",";
   json += "\"lastCmd\":\"" + jsonEscape(state.lastCommand) + "\"";
   json += "}";

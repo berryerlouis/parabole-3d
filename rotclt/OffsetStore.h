@@ -9,6 +9,7 @@ public:
 
   void save();
   void load();
+  void saveCurrentPosition(float currentAz, float currentEl);
 
 private:
   AppState& state_;

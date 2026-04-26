@@ -10,8 +10,9 @@ struct AppState {
   float offsetAz = 0.0f;
   float offsetEl = 0.0f;
   float parkAz = 180.0f;
-  float parkEl = 0.0f;
+  float parkEl = 90.0f;
 
   String lastCommand = "None";
   bool clientConnected = false;
+  bool enable = false;
 };

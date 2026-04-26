@@ -13,10 +13,15 @@
 
 // WiFi
 
-//const char* ssid = "";
-//const char* password = "";
+const char* ssid = "";
+const char* password = "";
 
 constexpr uint8_t LED_PIN = 2;
+constexpr uint8_t ENABLE_PIN = 5; // D1
+constexpr uint8_t AZ_STEP = 12;//D6 13; // D7
+constexpr uint8_t AZ_DIR = 13; // D7 15; // D8
+constexpr uint8_t EL_STEP = 14; // D5
+constexpr uint8_t EL_DIR = 15; // D8 12; // D6
 
 ESP8266WebServer server(80);
 
@@ -24,9 +29,9 @@ AppState appState;
 OffsetStore offsetStore(appState);
 RotctlService rotctl(4533, appState);
 LedIndicator led(LED_PIN, true);
-// Stepper pins: AZ_STEP=D1(5), AZ_DIR=D2(4), EL_STEP=D5(14), EL_DIR=D6(12)
-MotorDriver motorDriver(appState, 5, 4, 14, 12);
-WifiDebug wifiDebug(true);
+// Stepper pins: AZ_STEP=D7(13), AZ_DIR=D8(15), EL_STEP=D5(14), EL_DIR=D6(12)
+MotorDriver motorDriver(appState, AZ_STEP, AZ_DIR, EL_STEP, EL_DIR, ENABLE_PIN, true);
+WifiDebug wifiDebug(false);
 
 
 namespace {
@@ -117,12 +122,42 @@ void handleManual() {
   server.send(200, "text/plain", "OK");
 }
 
+void handleEnable() {
+  if (server.hasArg("state")) {
+    appState.enable = server.arg("state").toInt() != 0;
+  }
+  appState.lastCommand = appState.enable ? "Motors enabled" : "Motors disabled";
+  server.send(200, "text/plain", "OK");
+}
+
+void handleCalibrate() {
+  // Calculate steps per degree for AZ and EL
+  float azStepsPerDeg = 200 * 16 * (144.0f / 17.0f) / 360.0f;
+  float elStepsPerDeg = 200 * 16 * (64.0f / 21.0f) / 360.0f;
+
+  long azSteps = static_cast<long>(normalizeAz(appState.parkAz) * azStepsPerDeg);
+  motorDriver.setCurrentPositionAz(azSteps);
+  long elSteps = static_cast<long>(clampEl(appState.parkEl) * elStepsPerDeg);
+  motorDriver.setCurrentPositionEl(elSteps);
+  appState.currentAz = normalizeAz(appState.parkAz);
+  appState.currentEl = clampEl(appState.parkEl);
+  appState.lastCommand = "Calibrated to park";
+  server.send(200, "text/plain", "OK");
+}
+
+static float lastSavedAz = 0.0f;
+static float lastSavedEl = 0.0f;
+static unsigned long lastPositionSaveMs = 0;
+
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(64);
   Serial.println();
 
   offsetStore.load();
+  lastSavedAz = appState.currentAz;
+  lastSavedEl = appState.currentEl;
+  lastPositionSaveMs = millis();
 
   led.begin();
   led.setMode(LedMode::WifiSearching);
@@ -188,6 +223,8 @@ void setup() {
   server.on("/setpark", handleSetPark);
   server.on("/park", handlePark);
   server.on("/manual", handleManual);
+  server.on("/enable", handleEnable);
+  server.on("/calibrate", handleCalibrate);
   server.begin();
 
   rotctl.begin();
@@ -201,6 +238,18 @@ void loop() {
   rotctl.process();
 
   motorDriver.update();
+
+  const unsigned long now = millis();
+  float deltaAz = appState.currentAz - lastSavedAz;
+  if (deltaAz < 0.0f) deltaAz = -deltaAz;
+  float deltaEl = appState.currentEl - lastSavedEl;
+  if (deltaEl < 0.0f) deltaEl = -deltaEl;
+  if ((now - lastPositionSaveMs >= 5000 && (deltaAz >= 0.1f || deltaEl >= 0.1f)) || lastPositionSaveMs == 0) {
+    offsetStore.saveCurrentPosition(appState.currentAz, appState.currentEl);
+    lastSavedAz = appState.currentAz;
+    lastSavedEl = appState.currentEl;
+    lastPositionSaveMs = now;
+  }
 
   led.setMode(appState.clientConnected ? LedMode::RotctlConnected : LedMode::Idle);
   led.tick();

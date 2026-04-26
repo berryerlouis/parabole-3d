@@ -10,7 +10,7 @@ An ESP8266-based antenna rotator controller that implements the **Hamlib rotctld
 | **Protocol** | Hamlib `rotctld` on TCP port **4533** |
 | **Axes** | Azimuth (0–360°) + Elevation (0–90°) |
 | **Actuators** | 2× NEMA 17 stepper motors via step/dir drivers (A4988 / DRV8825) |
-| **Resolution** | 200 steps/rev × 16 microstepping = 3 200 steps/rev (0.1125°/step) |
+| **Resolution** | AZ: 27 106 steps/rev (0.0133°/step), EL: 9 743 steps/rev (0.0369°/step) |
 | **Web UI** | Built-in HTTP server on port 80 with interactive 3D view |
 | **Storage** | EEPROM — persists AZ/EL offsets and park position |
 | **LED** | Status indicator (WiFi search / idle / client connected) |
@@ -31,10 +31,10 @@ The motor driver uses the **AccelStepper** library with trapezoidal velocity pro
 
 | Axis | Max Speed | Acceleration | Steps/rev |
 |---|---|---|---|
-| **Azimuth** | 55°/s | 180°/s² | 3 200 |
-| **Elevation** | 35°/s | 140°/s² | 3 200 |
+| **Azimuth** | 55°/s | 180°/s² | 27 106 |
+| **Elevation** | 35°/s | 140°/s² | 9 743 |
 
-Stepper configuration: NEMA 17 (200 full steps/rev) with 16× microstepping on A4988 or DRV8825 driver boards.
+Stepper configuration: NEMA 17 (200 full steps/rev) with 16× microstepping on A4988 or DRV8825 driver boards, with gear ratios AZ 144:17, EL 64:21.
 
 ### LED Status Patterns
 

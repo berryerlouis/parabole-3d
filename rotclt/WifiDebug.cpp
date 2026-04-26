@@ -102,6 +102,9 @@ void WifiDebug::logReconnectAttempt(int retryCount) const {
 }
 
 void WifiDebug::logConnected(unsigned long elapsedMs) const {
+  
+  Serial.print("[WIFI] Local IP: ");
+  Serial.println(WiFi.localIP());
   if (!enabled_) {
     return;
   }
@@ -207,9 +210,7 @@ bool WifiDebug::scanAndSelectTarget(const char* wantedSsid, uint8_t outBssid[6],
   }
 
   Serial.print("[WIFI] Scan done: target AP found, RSSI=");
-  Serial.print(outRssi);
-  Serial.print(" ch=");
-  Serial.println(outChannel);
+  Serial.println(outRssi);
 
   if (enabled_) {
     Serial.print("[WIFI] Selected target AP RSSI=");
