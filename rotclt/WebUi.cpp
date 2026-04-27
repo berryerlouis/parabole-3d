@@ -28,111 +28,369 @@ String jsonEscape(const String& input) {
 
 String WebUi::renderRoot(const AppState& state) {
   String html = R"====(<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Parabole 3D Control</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotator Control</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#05060a;color:#e5e9f0;}
-.topbar{padding:10px 20px;background:#111827;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.6);}
-.statustopbar{padding:5px 20px;background:#111805;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.6);flex-direction: column;}
-.statustopbaritem{display:flex;justify-content:space-between;align-items:center;gap: 2vw;width: 100%;}
-.title{font-size:20px;font-weight:bold;letter-spacing:1px;}
-.ip{font-size:12px;opacity:.7;}
-.container{display:flex;flex-wrap:wrap;gap:15px;justify-content: center;}
-.container-3d{display:flex;flex-wrap:wrap;padding:15px;gap:15px;width: 66vw;}
-.container-panel{display:flex;flex-wrap:wrap;gap:15px;align-items: flex-start;width: 100%;}
-.card{background:#111827;border-radius:10px;padding:15px;box-shadow:0 2px 10px rgba(0,0,0,.7);flex:1 1 260px;min-width:260px;display: flex;flex-direction: column;align-items: stretch;}
-.card h2{margin-top:0;font-size:16px;border-bottom:1px solid #1f2937;padding-bottom:5px;margin-bottom:10px;}
-.label{font-size:12px;text-transform:uppercase;color:#9ca3af;}
-.value{font-size:18px;margin-bottom:5px;}
-.ok{color:#10b981;}.bad{color:#ef4444;}
-input{background:#020617;border:1px solid #374151;border-radius:6px;padding:4px 6px;color:#e5e9f0;margin-bottom:5px;}
-input:focus{outline:none;border-color:#3b82f6;}
-button{background:#3b82f6;border:none;border-radius:6px;padding:6px 10px;color:#fff;cursor:pointer;font-size:12px;margin-top:5px;}
-button:hover{background:#2563eb;}
-#oForm{display:flex;flex-direction:column;align-items:stretch;}
-#c3d{width:100%;height:450px;display:block;border-radius:6px;cursor:grab;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080b14;--surface:#0f1629;--surface2:#161d33;--border:#1e2a45;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --accent:#3b82f6;--accent-hover:#2563eb;--accent-glow:rgba(59,130,246,.15);
+  --green:#10b981;--red:#ef4444;--amber:#f59e0b;--orange:#f97316;
+  --radius:12px;--radius-sm:8px;
+}
+html{font-size:14px;}
+body{font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ── Top Bar ─────────────────────────── */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(15,22,41,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:10px 16px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.topbar-brand{display:flex;align-items:center;gap:8px;margin-right:auto;}
+.topbar-brand svg{width:26px;height:26px;color:var(--accent);}
+.topbar-title{font-size:1.15rem;font-weight:700;letter-spacing:.5px;white-space:nowrap;}
+.status-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:20px;
+  padding:4px 12px 4px 8px;font-size:.75rem;white-space:nowrap;
+}
+.chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.chip-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);}
+.chip-dot.off{background:var(--red);opacity:.7;}
+.chip-label{color:var(--text2);}
+.chip-value{color:var(--text);font-weight:600;}
+
+/* ── Layout ──────────────────────────── */
+.main{display:grid;gap:12px;padding:12px;grid-template-columns:1fr;max-width:1600px;margin:0 auto;}
+@media(min-width:768px){.main{grid-template-columns:1fr 1fr;}}
+@media(min-width:1100px){.main{grid-template-columns:1.6fr 1fr;}}
+
+.col-3d{grid-column:1 / -1;}
+@media(min-width:768px){.col-3d{grid-column:1 / -1;}}
+@media(min-width:1100px){.col-3d{grid-column:1;grid-row:1 / 4;}}
+
+.panels{
+  display:grid;gap:12px;
+  grid-template-columns:1fr;
+  grid-column:1 / -1;
+}
+@media(min-width:480px){.panels{grid-template-columns:1fr 1fr;}}
+@media(min-width:1100px){.panels{grid-column:2;grid-row:1 / 4;grid-template-columns:1fr;}}
+
+/* ── Cards ───────────────────────────── */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;
+  transition:border-color .2s;
+}
+.card:hover{border-color:rgba(59,130,246,.25);}
+.card-header{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:12px;padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.card-icon{font-size:1.1rem;}
+.card-title{font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);}
+
+/* ── Data display ────────────────────── */
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;}
+.data-item{display:flex;flex-direction:column;padding:4px 0;}
+.data-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:2px;}
+.data-value{font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);}
+.data-value.accent{color:var(--accent);}
+.data-value.amber{color:var(--amber);}
+
+/* ── Form elements ───────────────────── */
+.form-group{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+.form-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);}
+.form-input{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:8px 10px;color:var(--text);font-size:.9rem;width:100%;
+  transition:border-color .2s;
+}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);}
+select.form-input{cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;
+}
+
+/* ── Buttons ─────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border:none;border-radius:var(--radius-sm);padding:9px 14px;
+  font-size:.8rem;font-weight:600;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent-hover);transform:translateY(-1px);box-shadow:0 4px 12px rgba(59,130,246,.3);}
+.btn-primary:active{transform:translateY(0);}
+.btn-success{background:var(--green);color:#fff;}
+.btn-success:hover{background:#059669;}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-danger:hover{background:#dc2626;}
+.btn-amber{background:var(--amber);color:#000;}
+.btn-amber:hover{background:#d97706;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow);}
+.btn-sm{padding:6px 10px;font-size:.75rem;}
+.btn-block{width:100%;}
+.btn-icon{width:40px;height:40px;padding:0;font-size:1.1rem;}
+
+/* ── Direction pad ───────────────────── */
+.dpad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:180px;margin:0 auto;}
+.dpad .btn{height:44px;}
+.dpad-up{grid-column:2;}
+.dpad-left{grid-column:1;grid-row:2;}
+.dpad-right{grid-column:3;grid-row:2;}
+.dpad-down{grid-column:2;grid-row:3;}
+
+/* ── Enable toggle ───────────────────── */
+.toggle-row{display:flex;gap:8px;align-items:center;}
+.btn-enable{flex:1;}
+.btn-enable.active{background:var(--green);color:#fff;}
+.btn-enable.active:hover{background:#059669;}
+
+/* ── Button groups ───────────────────── */
+.btn-group{display:flex;gap:6px;margin-top:4px;}
+.btn-group .btn{flex:1;}
+
+/* ── 3D Canvas ───────────────────────── */
+#c3d{width:100%;height:350px;display:block;border-radius:var(--radius-sm);cursor:grab;}
 #c3d:active{cursor:grabbing;}
-.legend{font-size:11px;margin-top:6px;color:#9ca3af;display:flex;gap:12px;}
-.ld{display:flex;align-items:center;gap:4px;}
+@media(min-width:768px){#c3d{height:450px;}}
+@media(min-width:1100px){#c3d{height:calc(100vh - 100px);min-height:500px;max-height:900px;}}
+
+.legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;}
+.ld{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text3);}
 .lc{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+/* ── Mobile tab bar ──────────────────── */
+.mob-tabbar{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:rgba(15,22,41,.96);backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);
+  padding:6px 0 max(6px,env(safe-area-inset-bottom));
+}
+@media(max-width:767px){.mob-tabbar{display:flex;}}
+.mob-tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;color:var(--text3);font-size:.6rem;font-weight:600;
+  padding:4px 0;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;
+  transition:color .15s;
+}
+.mob-tab svg{width:22px;height:22px;}
+.mob-tab.active{color:var(--accent);}
+
+/* ── Mobile: show/hide sections ──────── */
+@media(max-width:767px){
+  body{padding-bottom:62px;}
+  .col-3d.mob-hidden,.panels.mob-hidden{display:none !important;}
+}
+
+/* ── Mobile quick controls overlay ───── */
+.mob-quick{
+  display:none;position:fixed;bottom:62px;left:0;right:0;z-index:150;
+  background:rgba(15,22,41,.94);backdrop-filter:blur(10px);
+  border-top:1px solid var(--border);
+  padding:8px 12px;
+}
+@media(max-width:767px){.mob-quick{display:flex;gap:10px;align-items:center;}}
+.mob-quick.mob-hidden{display:none !important;}
+.mob-quick-pos{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;flex:1;min-width:0;}
+.mob-quick-pos .data-label{font-size:.55rem;margin-bottom:0;}
+.mob-quick-pos .data-value{font-size:1rem;}
+.mob-quick-dpad{display:grid;grid-template-columns:repeat(3,32px);gap:3px;}
+.mob-quick-dpad .btn{width:32px;height:32px;padding:0;font-size:.85rem;min-width:0;}
+.mob-dpad-up{grid-column:2;}
+.mob-dpad-left{grid-column:1;grid-row:2;}
+.mob-dpad-right{grid-column:3;grid-row:2;}
+.mob-dpad-down{grid-column:2;grid-row:3;}
 </style>
 </head>
 <body>
-<div class="topbar">
-    <div class="title">Parabole Control 3D</div>
-    <button id="enableBtn">Enable Motors</button>
-    <div class="statustopbar">
-        <div class="statustopbaritem">
-            <div class="label">Client</div>
-            <div class="value" id="clientState">--</div>
-        </div>
-        <div class="statustopbaritem">
-            <div class="label">Derniere commande</div>
-            <div class="value" id="lastCmd">--</div>
-        </div>
+
+<!-- ── Top Bar ──────────────────────────────── -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+    <span class="topbar-title">Rotator Control</span>
+  </div>
+  <div class="status-chips">
+    <div class="chip">
+      <span class="chip-dot off" id="chipDot"></span>
+      <span class="chip-label">Client:</span>
+      <span class="chip-value" id="clientState">--</span>
     </div>
+    <div class="chip">
+      <span class="chip-label">Cmd:</span>
+      <span class="chip-value" id="lastCmd">--</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── Main Layout ─────────────────────────── -->
+<div class="main">
+
+  <!-- 3D View -->
+  <div class="col-3d">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">&#127758;</span>
+        <span class="card-title">3D View</span>
+      </div>
+      <canvas id="c3d"></canvas>
+      <div class="legend">
+        <div class="ld"><span class="lc" style="background:#90a4ae"></span>Current</div>
+        <div class="ld"><span class="lc" style="background:#fbbf24"></span>Target</div>
+        <div class="ld"><span class="lc" style="background:#10b981"></span>Direction</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Control Panels -->
+  <div class="panels">
+
+    <!-- Position Card -->
+    <div class="card" data-panel="ctrl">
+      <div class="card-header">
+        <span class="card-icon">&#128225;</span>
+        <span class="card-title">Position</span>
+      </div>
+      <div class="data-grid">
+        <div class="data-item">
+          <span class="data-label">Current AZ</span>
+          <span class="data-value" id="curAz">--</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">Current EL</span>
+          <span class="data-value" id="curEl">--</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">Target AZ</span>
+          <span class="data-value amber" id="tarAz">--</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">Target EL</span>
+          <span class="data-value amber" id="tarEl">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Motor Drive -->
+    <div class="card" data-panel="ctrl">
+      <div class="card-header">
+        <span class="card-icon">&#9881;</span>
+        <span class="card-title">Motor Drive</span>
+      </div>
+      <div class="toggle-row" style="margin-bottom:10px;">
+        <button type="button" class="btn btn-outline btn-enable btn-block" id="enableBtn">Enable Motors</button>
+      </div>
+      <div class="form-group">
+        <span class="form-label">Step size</span>
+        <select id="manualStep" class="form-input">
+          <option value="0.5">0.5&deg;</option>
+          <option value="1.0">1&deg;</option>
+          <option value="2.0" selected>2&deg;</option>
+          <option value="5.0">5&deg;</option>
+          <option value="10.0">10&deg;</option>
+        </select>
+      </div>
+      <div class="dpad">
+        <button type="button" class="btn btn-outline btn-icon dpad-up" id="upBtn">&#9650;</button>
+        <button type="button" class="btn btn-outline btn-icon dpad-left" id="leftBtn">&#9664;</button>
+        <button type="button" class="btn btn-outline btn-icon dpad-right" id="rightBtn">&#9654;</button>
+        <button type="button" class="btn btn-outline btn-icon dpad-down" id="downBtn">&#9660;</button>
+      </div>
+    </div>
+
+    <!-- Offsets -->
+    <div class="card" data-panel="ctrl">
+      <div class="card-header">
+        <span class="card-icon">&#128295;</span>
+        <span class="card-title">Offsets</span>
+      </div>
+      <form id="oForm">
+        <div class="data-grid">
+          <div class="form-group">
+            <span class="form-label">AZ Offset</span>
+            <input type="text" id="offAz" name="az" class="form-input" inputmode="decimal">
+          </div>
+          <div class="form-group">
+            <span class="form-label">EL Offset</span>
+            <input type="text" id="offEl" name="el" class="form-input" inputmode="decimal">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Save Offsets</button>
+      </form>
+      <div style="margin-top:8px;">
+        <button type="button" class="btn btn-outline btn-sm btn-block" id="setParkBtn">Calibrate to Park</button>
+      </div>
+    </div>
+
+    <!-- Park -->
+    <div class="card" data-panel="park">
+      <div class="card-header">
+        <span class="card-icon">&#127968;</span>
+        <span class="card-title">Park</span>
+      </div>
+      <div class="data-grid">
+        <div class="form-group">
+          <span class="form-label">Park AZ</span>
+          <input type="text" id="parkAz" name="parkAz" class="form-input" inputmode="decimal">
+        </div>
+        <div class="form-group">
+          <span class="form-label">Park EL</span>
+          <input type="text" id="parkEl" name="parkEl" class="form-input" inputmode="decimal">
+        </div>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-outline" id="saveParkBtn">Save</button>
+        <button type="button" class="btn btn-amber" id="goParkBtn">Park Now</button>
+      </div>
+    </div>
+
+  </div>
 </div>
-<div class="container">
-    <div class="container-3d">
-        <div class="card" >
-            <h2>Vue 3D</h2>
-            <canvas id="c3d"></canvas>
-            <div class="legend">
-            <div class="ld"><span class="lc" style="background:#90a4ae"></span>Courant</div>
-            <div class="ld"><span class="lc" style="background:#fbbf24"></span>Cible</div>
-            <div class="ld"><span class="lc" style="background:#10b981"></span>Direction</div>
-            </div>
-        </div>
-    </div>
-    <div class="container-panel">
-        <div class="card">
-            <h2>IMU &amp; Cible</h2>
-            <div class="label">Current AZ</div><div class="value" id="curAz">--</div>
-            <div class="label">Current EL</div><div class="value" id="curEl">--</div>
-            <div class="label">Target AZ</div><div class="value" id="tarAz">--</div>
-            <div class="label">Target EL</div><div class="value" id="tarEl">--</div>
-        </div>
-        <div class="card">
-            <h2>Offsets</h2>
-            <form id="oForm">
-            <div class="label">AZ offset</div>
-            <input type="text" id="offAz" name="az">
-            <div class="label">EL offset</div>
-            <input type="text" id="offEl" name="el"><br>
-            <button type="submit">Enregistrer</button>
-            </form>
-            <button type="button" id="setParkBtn">Calibrate to Park</button>
-        </div>
-        <div class="card">
-            <h2>Motor Drive</h2>
-            <div class="label">Manual step</div>
-            <select id="manualStep" style="background:#020617;border:1px solid #374151;border-radius:6px;padding:4px 6px;color:#e5e9f0;margin-bottom:8px;">
-            <option value="0.5">0.5&deg;</option>
-            <option value="1.0">1&deg;</option>
-            <option value="2.0" selected>2&deg;</option>
-            <option value="5.0">5&deg;</option>
-            </select>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button type="button" id="upBtn" style="grid-column:1 / span 2;">Up</button>
-            <button type="button" id="leftBtn">Left</button>
-            <button type="button" id="rightBtn">Right</button>
-            <button type="button" id="downBtn" style="grid-column:1 / span 2;">Down</button>
-            </div>
-        </div>
-        <div class="card">
-            <h2>Park</h2>
-            <div class="label" style="margin-top:10px;">Park AZ</div>
-            <input type="text" id="parkAz" name="parkAz">
-            <div class="label">Park EL</div>
-            <input type="text" id="parkEl" name="parkEl"><br>
-            <button type="button" id="saveParkBtn">Save Park</button>
-            <button type="button" id="goParkBtn">Park Now</button>
-        </div>
-    </div>
+
+<!-- ── Mobile quick controls (overlay on 3D tab) ── -->
+<div class="mob-quick" id="mobQuick">
+  <div class="mob-quick-pos">
+    <div><span class="data-label">AZ</span><span class="data-value" id="mqAz">--</span></div>
+    <div><span class="data-label">EL</span><span class="data-value" id="mqEl">--</span></div>
+    <div><span class="data-label">T.AZ</span><span class="data-value amber" id="mqTAz">--</span></div>
+    <div><span class="data-label">T.EL</span><span class="data-value amber" id="mqTEl">--</span></div>
+  </div>
+  <div class="mob-quick-dpad">
+    <button type="button" class="btn btn-outline mob-dpad-up" id="mqUp">&#9650;</button>
+    <button type="button" class="btn btn-outline mob-dpad-left" id="mqLeft">&#9664;</button>
+    <button type="button" class="btn btn-outline mob-dpad-right" id="mqRight">&#9654;</button>
+    <button type="button" class="btn btn-outline mob-dpad-down" id="mqDown">&#9660;</button>
+  </div>
 </div>
+
+<!-- ── Mobile tab bar ──────────────────────── -->
+<nav class="mob-tabbar" id="mobTabbar">
+  <button class="mob-tab active" data-tab="3d">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+    3D
+  </button>
+  <button class="mob-tab" data-tab="ctrl">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+    Controls
+  </button>
+  <button class="mob-tab" data-tab="park">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    Park
+  </button>
+</nav>
 
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.158.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.158.0/examples/jsm/"}}
@@ -146,22 +404,17 @@ let D = {
   currentAz:%CUR_AZ%, currentEl:%CUR_EL%,
   targetAz:%TAR_AZ%,  targetEl:%TAR_EL%,
   offsetAz:%OFF_AZ%,  offsetEl:%OFF_EL%,
-  parkAz:%PARK_AZ%,  parkEl:%PARK_EL%,
+  parkAz:%PARK_AZ%,   parkEl:%PARK_EL%,
   enable:%ENABLE%,
-  client:"%CLIENT%",  lastCmd:"%LASTCMD%"
+  client:"%CLIENT%",   lastCmd:"%LASTCMD%"
 };
 
-const dirty = {
-  offAz: false,
-  offEl: false,
-  parkAz: false,
-  parkEl: false
-};
+const dirty = { offAz:false, offEl:false, parkAz:false, parkEl:false };
 
 const canvas = document.getElementById('c3d');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(devicePixelRatio);
-renderer.setClearColor(0x0d1117);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x080b14);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
@@ -333,13 +586,15 @@ animate();
 function updateUI() {
   const conn = Number(D.client) === 1;
   const cs = document.getElementById('clientState');
-  cs.textContent = conn ? "Connecte" : "Aucun";
-  cs.className = conn ? "value ok" : "value bad";
-  document.getElementById('lastCmd').textContent = D.lastCmd.trim();
-  document.getElementById('curAz').textContent = D.currentAz.toFixed(1) + "\xb0";
-  document.getElementById('curEl').textContent = D.currentEl.toFixed(1) + "\xb0";
-  document.getElementById('tarAz').textContent = D.targetAz.toFixed(1) + "\xb0";
-  document.getElementById('tarEl').textContent = D.targetEl.toFixed(1) + "\xb0";
+  const dot = document.getElementById('chipDot');
+  cs.textContent = conn ? 'Connected' : 'None';
+  dot.className = conn ? 'chip-dot on' : 'chip-dot off';
+  document.getElementById('lastCmd').textContent = D.lastCmd ? D.lastCmd.trim() : '--';
+
+  document.getElementById('curAz').textContent = D.currentAz.toFixed(1) + '\xb0';
+  document.getElementById('curEl').textContent = D.currentEl.toFixed(1) + '\xb0';
+  document.getElementById('tarAz').textContent = D.targetAz.toFixed(1) + '\xb0';
+  document.getElementById('tarEl').textContent = D.targetEl.toFixed(1) + '\xb0';
 
   const offAzInput = document.getElementById('offAz');
   const offElInput = document.getElementById('offEl');
@@ -351,7 +606,14 @@ function updateUI() {
   if (document.activeElement !== parkAzInput && !dirty.parkAz) parkAzInput.value = D.parkAz;
   if (document.activeElement !== parkElInput && !dirty.parkEl) parkElInput.value = D.parkEl;
 
-  document.getElementById('enableBtn').textContent = D.enable ? "Disable Motors" : "Enable Motors";
+  const eb = document.getElementById('enableBtn');
+  if (D.enable) {
+    eb.textContent = 'Disable Motors';
+    eb.className = 'btn btn-enable btn-block active';
+  } else {
+    eb.textContent = 'Enable Motors';
+    eb.className = 'btn btn-outline btn-enable btn-block';
+  }
 }
 
 document.getElementById('offAz').addEventListener('input', () => { dirty.offAz = true; });
@@ -414,6 +676,54 @@ document.getElementById('setParkBtn').addEventListener('click', () => {
 
 updateUI();
 setInterval(fetchData, 100);
+
+/* ── Mobile tab switching ─────────────── */
+const col3d = document.querySelector('.col-3d');
+const panels = document.querySelector('.panels');
+const mobQuick = document.getElementById('mobQuick');
+const tabs = document.querySelectorAll('.mob-tab');
+
+function setMobTab(tab) {
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  const isMobile = window.matchMedia('(max-width:767px)').matches;
+  if (!isMobile) return;
+  if (tab === '3d') {
+    col3d.classList.remove('mob-hidden');
+    panels.classList.add('mob-hidden');
+    mobQuick.classList.remove('mob-hidden');
+  } else {
+    col3d.classList.add('mob-hidden');
+    panels.classList.remove('mob-hidden');
+    mobQuick.classList.add('mob-hidden');
+    /* Show only cards matching the active tab */
+    panels.querySelectorAll('.card[data-panel]').forEach(c => {
+      c.style.display = c.dataset.panel === tab ? '' : 'none';
+    });
+  }
+  resize();
+}
+tabs.forEach(t => t.addEventListener('click', () => setMobTab(t.dataset.tab)));
+setMobTab('3d');
+
+/* ── Mobile quick dpad ───────────────── */
+document.getElementById('mqUp').addEventListener('click', () => sendManual('up'));
+document.getElementById('mqDown').addEventListener('click', () => sendManual('down'));
+document.getElementById('mqLeft').addEventListener('click', () => sendManual('right'));
+document.getElementById('mqRight').addEventListener('click', () => sendManual('left'));
+
+/* Update mobile overlay values */
+const origUpdateUI = updateUI;
+updateUI = function() {
+  origUpdateUI();
+  const mqAz = document.getElementById('mqAz');
+  const mqEl = document.getElementById('mqEl');
+  const mqTAz = document.getElementById('mqTAz');
+  const mqTEl = document.getElementById('mqTEl');
+  if (mqAz) mqAz.textContent = D.currentAz.toFixed(1) + '\xb0';
+  if (mqEl) mqEl.textContent = D.currentEl.toFixed(1) + '\xb0';
+  if (mqTAz) mqTAz.textContent = D.targetAz.toFixed(1) + '\xb0';
+  if (mqTEl) mqTEl.textContent = D.targetEl.toFixed(1) + '\xb0';
+};
 </script>
 </body>
 </html>

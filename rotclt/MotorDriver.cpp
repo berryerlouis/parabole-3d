@@ -1,4 +1,7 @@
 #include "MotorDriver.h"
+#include "Logger.h"
+
+static const char* TAG = "MOTOR";
 
 MotorDriver::MotorDriver(AppState& state,
                          uint8_t azStepPin, uint8_t azDirPin,
@@ -27,19 +30,21 @@ void MotorDriver::begin() {
 
   stepperAz_.setCurrentPosition(degreesToStepsAz(state_.currentAz));
   stepperEl_.setCurrentPosition(degreesToStepsEl(state_.currentEl));
+
+  Logger::info(TAG, "Motor driver initialized");
 }
 
 void MotorDriver::update() {
   if (state_.targetAz != lastTargetAz_) {
-    float currentDeg = normalizeAz(stepsToDegreesAz(stepperAz_.currentPosition()));
-    float delta = shortestAzDelta(state_.targetAz, currentDeg);
+    float currentDeg = AngleUtils::normalizeAz(stepsToDegreesAz(stepperAz_.currentPosition()));
+    float delta = AngleUtils::shortestAzDelta(state_.targetAz, currentDeg);
     long steps = static_cast<long>(delta * kStepsPerRotationAz / 360.0f);
     stepperAz_.moveTo(stepperAz_.currentPosition() + steps);
     lastTargetAz_ = state_.targetAz;
   }
 
   if (state_.targetEl != lastTargetEl_) {
-    long target = static_cast<long>(clampEl(state_.targetEl) * kStepsPerRotationEl / 360.0f);
+    long target = static_cast<long>(AngleUtils::clampEl(state_.targetEl) * kStepsPerRotationEl / 360.0f);
     stepperEl_.moveTo(target);
     lastTargetEl_ = state_.targetEl;
   }
@@ -50,8 +55,8 @@ void MotorDriver::update() {
   stepperAz_.run();
   stepperEl_.run();
 
-  state_.currentAz = normalizeAz(stepsToDegreesAz(stepperAz_.currentPosition()));
-  state_.currentEl = clampEl(stepsToDegreesEl(stepperEl_.currentPosition()));
+  state_.currentAz = AngleUtils::normalizeAz(stepsToDegreesAz(stepperAz_.currentPosition()));
+  state_.currentEl = AngleUtils::clampEl(stepsToDegreesEl(stepperEl_.currentPosition()));
 }
 
 void MotorDriver::setCurrentPositionAz(long pos) {
@@ -73,7 +78,7 @@ void MotorDriver::setEnable(bool enabled) {
 
   enabled_ = enabled;
   const int value = (enabled ^ enableActiveLow_) ? HIGH : LOW;
-  Serial.printf("Motors %s - value: %d\n", enabled ? "enabled" : "disabled", value);
+  Logger::infof(TAG, "Motors %s (pin=%d)", enabled ? "enabled" : "disabled", value);
   digitalWrite(enablePin_, value);
 }
 
@@ -86,26 +91,9 @@ float MotorDriver::stepsToDegreesEl(long steps) const {
 }
 
 long MotorDriver::degreesToStepsAz(float deg) const {
-  return static_cast<long>(normalizeAz(deg) * kStepsPerRotationAz / 360.0f);
+  return static_cast<long>(AngleUtils::normalizeAz(deg) * kStepsPerRotationAz / 360.0f);
 }
 
 long MotorDriver::degreesToStepsEl(float deg) const {
-  return static_cast<long>(clampEl(deg) * kStepsPerRotationEl / 360.0f);
-}
-
-float MotorDriver::normalizeAz(float az) {
-  while (az < 0.0f) az += 360.0f;
-  while (az >= 360.0f) az -= 360.0f;
-  return az;
-}
-
-float MotorDriver::clampEl(float el) {
-  return constrain(el, 0.0f, 90.0f);
-}
-
-float MotorDriver::shortestAzDelta(float target, float current) {
-  float d = target - current;
-  while (d > 180.0f) d -= 360.0f;
-  while (d < -180.0f) d += 360.0f;
-  return d;
+  return static_cast<long>(AngleUtils::clampEl(deg) * kStepsPerRotationEl / 360.0f);
 }

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 
+#include "AngleUtils.h"
 #include "AppState.h"
 
 class MotorDriver {
@@ -19,10 +20,6 @@ public:
   void setCurrentPositionEl(long pos);
 
 private:
-  static float normalizeAz(float az);
-  static float clampEl(float el);
-  static float shortestAzDelta(float target, float current);
-
   float stepsToDegreesAz(long steps) const;
   float stepsToDegreesEl(long steps) const;
   long degreesToStepsAz(float deg) const;

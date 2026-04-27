@@ -1,6 +1,9 @@
 #include "OffsetStore.h"
+#include "Logger.h"
 
 #include <math.h>
+
+static const char* TAG = "STORE";
 
 namespace {
 constexpr int kOffsetAzAddr = 0;
@@ -20,18 +23,15 @@ void OffsetStore::save() {
   EEPROM.put(kParkElAddr, state_.parkEl);
   EEPROM.commit();
 
-  Serial.println("Saved offset AZ:" + String(state_.offsetAz));
-  Serial.println("Saved offset EL:" + String(state_.offsetEl));
-  Serial.println("Saved park AZ:" + String(state_.parkAz));
-  Serial.println("Saved park EL:" + String(state_.parkEl));
+  Logger::infof(TAG, "Saved offset AZ=%.1f EL=%.1f", state_.offsetAz, state_.offsetEl);
+  Logger::infof(TAG, "Saved park AZ=%.1f EL=%.1f", state_.parkAz, state_.parkEl);
 }
 
 void OffsetStore::saveCurrentPosition(float currentAz, float currentEl) {
   EEPROM.put(kCurrentAzAddr, currentAz);
   EEPROM.put(kCurrentElAddr, currentEl);
   EEPROM.commit();
-  Serial.println("Saved current AZ:" + String(currentAz));
-  Serial.println("Saved current EL:" + String(currentEl));
+  Logger::infof(TAG, "Saved position AZ=%.1f EL=%.1f", currentAz, currentEl);
 }
 
 void OffsetStore::load() {
@@ -72,10 +72,7 @@ void OffsetStore::load() {
     saveCurrentPosition(state_.currentAz, state_.currentEl);
   }
 
-  Serial.println("Loaded offset AZ:" + String(state_.offsetAz));
-  Serial.println("Loaded offset EL:" + String(state_.offsetEl));
-  Serial.println("Loaded park AZ:" + String(state_.parkAz));
-  Serial.println("Loaded park EL:" + String(state_.parkEl));
-  Serial.println("Loaded current AZ:" + String(state_.currentAz));
-  Serial.println("Loaded current EL:" + String(state_.currentEl));
+  Logger::infof(TAG, "Loaded offset AZ=%.1f EL=%.1f", state_.offsetAz, state_.offsetEl);
+  Logger::infof(TAG, "Loaded park AZ=%.1f EL=%.1f", state_.parkAz, state_.parkEl);
+  Logger::infof(TAG, "Loaded position AZ=%.1f EL=%.1f", state_.currentAz, state_.currentEl);
 }

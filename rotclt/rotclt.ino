@@ -1,158 +1,48 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
 #include <Wire.h>
 #include <EEPROM.h>
 
 #include "AppState.h"
+#include "HttpHandler.h"
 #include "LedIndicator.h"
+#include "Logger.h"
 #include "MotorDriver.h"
 #include "OffsetStore.h"
 #include "RotctlService.h"
-#include "WifiDebug.h"
-#include "WebUi.h"
+#include "WifiManager.h"
 
-// WiFi
+// ── Configuration ──────────────────────────────────────────────
 
-const char* ssid = "";
+const char* ssid     = "";
 const char* password = "";
 
-constexpr uint8_t LED_PIN = 2;
-constexpr uint8_t ENABLE_PIN = 5; // D1
-constexpr uint8_t AZ_STEP = 12;//D6 13; // D7
-constexpr uint8_t AZ_DIR = 13; // D7 15; // D8
-constexpr uint8_t EL_STEP = 14; // D5
-constexpr uint8_t EL_DIR = 15; // D8 12; // D6
+constexpr uint8_t LED_PIN    = 2;
+constexpr uint8_t ENABLE_PIN = 5;   // D1
+constexpr uint8_t AZ_STEP    = 12;  // D6
+constexpr uint8_t AZ_DIR     = 13;  // D7
+constexpr uint8_t EL_STEP    = 14;  // D5
+constexpr uint8_t EL_DIR     = 15;  // D8
 
-ESP8266WebServer server(80);
+// ── Global objects ─────────────────────────────────────────────
 
-AppState appState;
-OffsetStore offsetStore(appState);
+AppState      appState;
+OffsetStore   offsetStore(appState);
+MotorDriver   motorDriver(appState, AZ_STEP, AZ_DIR, EL_STEP, EL_DIR, ENABLE_PIN, true);
+LedIndicator  led(LED_PIN, true);
+WifiManager   wifi(ssid, password);
+HttpHandler   http(80, appState, offsetStore, motorDriver);
 RotctlService rotctl(4533, appState);
-LedIndicator led(LED_PIN, true);
-// Stepper pins: AZ_STEP=D7(13), AZ_DIR=D8(15), EL_STEP=D5(14), EL_DIR=D6(12)
-MotorDriver motorDriver(appState, AZ_STEP, AZ_DIR, EL_STEP, EL_DIR, ENABLE_PIN, true);
-WifiDebug wifiDebug(false);
 
+// ── Position auto-save state ───────────────────────────────────
 
-namespace {
-bool targetApKnown = false;
-uint8_t targetApBssid[6] = {0, 0, 0, 0, 0, 0};
-int targetApRssi = -127;
-int targetApChannel = 0;
-
-float normalizeAz(float az) {
-  while (az < 0.0f) {
-    az += 360.0f;
-  }
-  while (az >= 360.0f) {
-    az -= 360.0f;
-  }
-  return az;
-}
-
-float clampEl(float el) {
-  return constrain(el, 0.0f, 90.0f);
-}
-
-}
-
-void handleRoot() {
-  server.send(200, "text/html", WebUi::renderRoot(appState));
-}
-
-void handleStatus() {
-  server.send(200, "application/json", WebUi::statusJson(appState));
-}
-
-void handleSetOffset() {
-  if (server.hasArg("az")) {
-    appState.offsetAz = server.arg("az").toFloat();
-  }
-  if (server.hasArg("el")) {
-    appState.offsetEl = server.arg("el").toFloat();
-  }
-  offsetStore.save();
-  server.send(200, "text/plain", "OK");
-}
-
-void handleSetPark() {
-  if (server.hasArg("az")) {
-    appState.parkAz = normalizeAz(server.arg("az").toFloat());
-  }
-  if (server.hasArg("el")) {
-    appState.parkEl = clampEl(server.arg("el").toFloat());
-  }
-  offsetStore.save();
-  appState.lastCommand = "Saved park";
-  server.send(200, "text/plain", "OK");
-}
-
-void handlePark() {
-  appState.targetAz = normalizeAz(appState.parkAz);
-  appState.targetEl = clampEl(appState.parkEl);
-  appState.lastCommand = "Park";
-  server.send(200, "text/plain", "OK");
-}
-
-void handleManual() {
-  const String dir = server.arg("d");
-  float step = 2.0f;
-  if (server.hasArg("s")) {
-    step = server.arg("s").toFloat();
-  }
-  if (step <= 0.0f) {
-    step = 2.0f;
-  }
-  step = constrain(step, 0.1f, 30.0f);
-
-  if (dir == "left") {
-    appState.targetAz = normalizeAz(appState.targetAz - step);
-  } else if (dir == "right") {
-    appState.targetAz = normalizeAz(appState.targetAz + step);
-  } else if (dir == "up") {
-    appState.targetEl = clampEl(appState.targetEl + step);
-  } else if (dir == "down") {
-    appState.targetEl = clampEl(appState.targetEl - step);
-  } else {
-    server.send(400, "text/plain", "Invalid direction");
-    return;
-  }
-
-  appState.lastCommand = "Manual " + dir;
-  server.send(200, "text/plain", "OK");
-}
-
-void handleEnable() {
-  if (server.hasArg("state")) {
-    appState.enable = server.arg("state").toInt() != 0;
-  }
-  appState.lastCommand = appState.enable ? "Motors enabled" : "Motors disabled";
-  server.send(200, "text/plain", "OK");
-}
-
-void handleCalibrate() {
-  // Calculate steps per degree for AZ and EL
-  float azStepsPerDeg = 200 * 16 * (144.0f / 17.0f) / 360.0f;
-  float elStepsPerDeg = 200 * 16 * (64.0f / 21.0f) / 360.0f;
-
-  long azSteps = static_cast<long>(normalizeAz(appState.parkAz) * azStepsPerDeg);
-  motorDriver.setCurrentPositionAz(azSteps);
-  long elSteps = static_cast<long>(clampEl(appState.parkEl) * elStepsPerDeg);
-  motorDriver.setCurrentPositionEl(elSteps);
-  appState.currentAz = normalizeAz(appState.parkAz);
-  appState.currentEl = clampEl(appState.parkEl);
-  appState.lastCommand = "Calibrated to park";
-  server.send(200, "text/plain", "OK");
-}
-
-static float lastSavedAz = 0.0f;
-static float lastSavedEl = 0.0f;
+static float         lastSavedAz       = 0.0f;
+static float         lastSavedEl       = 0.0f;
 static unsigned long lastPositionSaveMs = 0;
 
+// ── Setup & Loop ───────────────────────────────────────────────
+
 void setup() {
-  Serial.begin(115200);
+  Logger::begin(115200);
   EEPROM.begin(64);
-  Serial.println();
 
   offsetStore.load();
   lastSavedAz = appState.currentAz;
@@ -162,89 +52,31 @@ void setup() {
   led.begin();
   led.setMode(LedMode::WifiSearching);
 
-  Serial.println("Started");
-  wifiDebug.logBootDiagnostics(ssid);
+  Logger::info("APP", "Starting...");
 
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  WiFi.setAutoReconnect(true);
-  WiFi.persistent(false);
-  WiFi.setOutputPower(20.5f);
-  WiFi.disconnect();
-  delay(300);
+  wifi.connect(led);
 
-  wifiDebug.logInitialStatus(WiFi.status());
-  targetApKnown = wifiDebug.scanAndSelectTarget(ssid, targetApBssid, targetApChannel, targetApRssi);
-  wifiDebug.beginConnection(ssid, password, targetApKnown, targetApBssid, targetApChannel);
-
-  const unsigned long connectStartMs = millis();
-  unsigned long lastStatusLogMs = 0;
-  unsigned long lastRetryMs = 0;
-  int lastStatus = WL_IDLE_STATUS;
-  int retryCount = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    led.tick();
-    delay(20);
-
-    const unsigned long now = millis();
-    const int st = WiFi.status();
-
-    if (st != lastStatus) {
-      wifiDebug.logStatusChange(st);
-      lastStatus = st;
-    }
-
-    if (now - lastStatusLogMs >= 1000) {
-      wifiDebug.logWaiting(st, now - connectStartMs);
-      lastStatusLogMs = now;
-    }
-
-    // If stuck disconnected/connect-failed/wrong-password, retry association periodically.
-    if ((st == WL_DISCONNECTED || st == WL_CONNECT_FAILED || st == WL_WRONG_PASSWORD || st == WL_NO_SSID_AVAIL) &&
-        (now - lastRetryMs >= 10000)) {
-      retryCount++;
-      wifiDebug.logReconnectAttempt(retryCount);
-      targetApKnown = wifiDebug.scanAndSelectTarget(ssid, targetApBssid, targetApChannel, targetApRssi);
-      WiFi.disconnect();
-      delay(50);
-      wifiDebug.beginConnection(ssid, password, targetApKnown, targetApBssid, targetApChannel);
-      lastRetryMs = now;
-    }
-  }
-
-  led.pulse(200);
-  delay(220);
-
-  wifiDebug.logConnected(millis() - connectStartMs);
-
-  server.on("/", handleRoot);
-  server.on("/status", handleStatus);
-  server.on("/setoffset", handleSetOffset);
-  server.on("/setpark", handleSetPark);
-  server.on("/park", handlePark);
-  server.on("/manual", handleManual);
-  server.on("/enable", handleEnable);
-  server.on("/calibrate", handleCalibrate);
-  server.begin();
-
+  http.begin();
   rotctl.begin();
 
   Wire.begin();
   motorDriver.begin();
+
+  Logger::info("APP", "Ready");
 }
 
 void loop() {
-  server.handleClient();
+  http.handleClient();
   rotctl.process();
-
   motorDriver.update();
 
+  // Periodic position save to EEPROM
   const unsigned long now = millis();
-  float deltaAz = appState.currentAz - lastSavedAz;
-  if (deltaAz < 0.0f) deltaAz = -deltaAz;
-  float deltaEl = appState.currentEl - lastSavedEl;
-  if (deltaEl < 0.0f) deltaEl = -deltaEl;
-  if ((now - lastPositionSaveMs >= 5000 && (deltaAz >= 0.1f || deltaEl >= 0.1f)) || lastPositionSaveMs == 0) {
+  float deltaAz = abs(appState.currentAz - lastSavedAz);
+  float deltaEl = abs(appState.currentEl - lastSavedEl);
+
+  if ((now - lastPositionSaveMs >= 5000 && (deltaAz >= 0.1f || deltaEl >= 0.1f))
+      || lastPositionSaveMs == 0) {
     offsetStore.saveCurrentPosition(appState.currentAz, appState.currentEl);
     lastSavedAz = appState.currentAz;
     lastSavedEl = appState.currentEl;

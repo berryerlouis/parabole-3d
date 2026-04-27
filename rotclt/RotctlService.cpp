@@ -1,26 +1,8 @@
 #include "RotctlService.h"
+#include "AngleUtils.h"
+#include "Logger.h"
 
-namespace {
-float normalizeAz(float az) {
-  while (az < 0.0f) {
-    az += 360.0f;
-  }
-  while (az >= 360.0f) {
-    az -= 360.0f;
-  }
-  return az;
-}
-
-float clampEl(float el) {
-  if (el < 0.0f) {
-    return 0.0f;
-  }
-  if (el > 90.0f) {
-    return 90.0f;
-  }
-  return el;
-}
-}
+static const char* TAG = "ROTCTL";
 
 RotctlService::RotctlService(uint16_t port, AppState& state)
   : server_(port), state_(state) {}
@@ -56,7 +38,7 @@ void RotctlService::acceptClientIfNeeded() {
   client_.setTimeout(15);
   state_.clientConnected = true;
   state_.lastCommand = "Client connected";
-  Serial.println("rotctl client connected");
+  Logger::info(TAG, "Client connected");
 }
 
 void RotctlService::dropClient() {
@@ -64,7 +46,7 @@ void RotctlService::dropClient() {
   state_.lastCommand = "Client disconnected";
   rxLine_ = "";
   client_.stop();
-  Serial.println("rotctl client disconnected");
+  Logger::info(TAG, "Client disconnected");
 }
 
 void RotctlService::processIncomingBytes() {
@@ -100,7 +82,7 @@ void RotctlService::processLine(const String& line) {
   }
 
   state_.lastCommand = cmd;
-  Serial.println("CMD: " + cmd);
+  Logger::debugf(TAG, "CMD: %s", cmd.c_str());
 
   bool extendedResponse = false;
   if (cmd.startsWith("+")) {
@@ -126,8 +108,8 @@ void RotctlService::processLine(const String& line) {
     }
 
     if (parsed == 2) {
-      state_.targetAz = normalizeAz(az);
-      state_.targetEl = clampEl(el);
+      state_.targetAz = AngleUtils::normalizeAz(az);
+      state_.targetEl = AngleUtils::clampEl(el);
       if (extendedResponse) {
         client_.print("set_pos: ");
         client_.print(String(state_.targetAz, 6));
