@@ -67,6 +67,12 @@ body{font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;backgroun
 .chip-dot.off{background:var(--red);opacity:.7;}
 .chip-label{color:var(--text2);}
 .chip-value{color:var(--text);font-weight:600;}
+.chip-toggle{
+  cursor:pointer;user-select:none;transition:border-color .2s,background .2s;
+}
+.chip-toggle:hover{border-color:var(--accent);}
+.chip-toggle.active{border-color:var(--green);background:rgba(16,185,129,.12);}
+.chip-toggle .chip-dot{transition:background .2s,box-shadow .2s;}
 
 /* ── Layout ──────────────────────────── */
 .main{display:grid;gap:12px;padding:12px;grid-template-columns:1fr;max-width:1600px;margin:0 auto;}
@@ -232,6 +238,10 @@ select.form-input{cursor:pointer;appearance:none;
     <div class="chip">
       <span class="chip-label">Cmd:</span>
       <span class="chip-value" id="lastCmd">--</span>
+    </div>
+    <div class="chip chip-toggle" id="chipEnable" title="Toggle motor enable">
+      <span class="chip-dot off" id="chipEnDot"></span>
+      <span class="chip-value" id="chipEnLabel">Motors OFF</span>
     </div>
   </div>
 </header>
@@ -607,12 +617,21 @@ function updateUI() {
   if (document.activeElement !== parkElInput && !dirty.parkEl) parkElInput.value = D.parkEl;
 
   const eb = document.getElementById('enableBtn');
+  const enChip = document.getElementById('chipEnable');
+  const enDot = document.getElementById('chipEnDot');
+  const enLabel = document.getElementById('chipEnLabel');
   if (D.enable) {
     eb.textContent = 'Disable Motors';
     eb.className = 'btn btn-enable btn-block active';
+    enChip.classList.add('active');
+    enDot.className = 'chip-dot on';
+    enLabel.textContent = 'Motors ON';
   } else {
     eb.textContent = 'Enable Motors';
     eb.className = 'btn btn-outline btn-enable btn-block';
+    enChip.classList.remove('active');
+    enDot.className = 'chip-dot off';
+    enLabel.textContent = 'Motors OFF';
   }
 }
 
@@ -665,10 +684,12 @@ document.getElementById('saveParkBtn').addEventListener('click', () => {
     });
 });
 
-document.getElementById('enableBtn').addEventListener('click', () => {
+function toggleEnable() {
   const newState = D.enable ? 0 : 1;
   fetch('/enable?state=' + newState).then(() => setTimeout(fetchData, 300));
-});
+}
+document.getElementById('enableBtn').addEventListener('click', toggleEnable);
+document.getElementById('chipEnable').addEventListener('click', toggleEnable);
 
 document.getElementById('setParkBtn').addEventListener('click', () => {
   fetch('/calibrate').then(() => setTimeout(fetchData, 120));
