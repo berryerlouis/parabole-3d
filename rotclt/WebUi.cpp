@@ -1,4 +1,6 @@
 #include "WebUi.h"
+#include <pgmspace.h>
+
 
 namespace {
 String jsonEscape(const String& input) {
@@ -26,8 +28,7 @@ String jsonEscape(const String& input) {
 }
 }
 
-String WebUi::renderRoot(const AppState& state) {
-  String html = R"====(<!DOCTYPE html>
+const char WEB_ROOT[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -750,19 +751,46 @@ updateUI = function() {
 </html>
 )====";
 
-  html.replace("%CUR_AZ%", String(state.currentAz, 1));
-  html.replace("%CUR_EL%", String(state.currentEl, 1));
-  html.replace("%TAR_AZ%", String(state.targetAz, 1));
-  html.replace("%TAR_EL%", String(state.targetEl, 1));
-  html.replace("%OFF_AZ%", String(state.offsetAz, 1));
-  html.replace("%OFF_EL%", String(state.offsetEl, 1));
-  html.replace("%PARK_AZ%", String(state.parkAz, 1));
-  html.replace("%PARK_EL%", String(state.parkEl, 1));
-  html.replace("%ENABLE%", state.enable ? "1" : "0");
-  html.replace("%CLIENT%", state.clientConnected ? "1" : "0");
-  html.replace("%LASTCMD%", state.lastCommand);
+)rawliteral";
 
-  return html;
+  
+String WebUi::renderRoot(const AppState& state) {
+  // Create formatted values
+  char curAz[16], curEl[16], tarAz[16], tarEl[16];
+  char offAz[16], offEl[16], parkAz[16], parkEl[16];
+  char lastCmd[128];
+  
+  dtostrf(state.currentAz, 1, 1, curAz);
+  dtostrf(state.currentEl, 1, 1, curEl);
+  dtostrf(state.targetAz, 1, 1, tarAz);
+  dtostrf(state.targetEl, 1, 1, tarEl);
+  dtostrf(state.offsetAz, 1, 1, offAz);
+  dtostrf(state.offsetEl, 1, 1, offEl);
+  dtostrf(state.parkAz, 1, 1, parkAz);
+  dtostrf(state.parkEl, 1, 1, parkEl);
+  
+  // Escape lastCommand for JavaScript
+  String escapedCmd = state.lastCommand;
+  escapedCmd.replace("\\", "\\\\");
+  escapedCmd.replace("\"", "\\\"");
+  escapedCmd.replace("\n", "\\n");
+  escapedCmd.replace("\r", "\\r");
+  
+  // Replace all placeholders
+  String htmlBase = FPSTR(WEB_ROOT);
+  htmlBase.replace("%CUR_AZ%", curAz);
+  htmlBase.replace("%CUR_EL%", curEl);
+  htmlBase.replace("%TAR_AZ%", tarAz);
+  htmlBase.replace("%TAR_EL%", tarEl);
+  htmlBase.replace("%OFF_AZ%", offAz);
+  htmlBase.replace("%OFF_EL%", offEl);
+  htmlBase.replace("%PARK_AZ%", parkAz);
+  htmlBase.replace("%PARK_EL%", parkEl);
+  htmlBase.replace("%ENABLE%", state.enable ? "1" : "0");
+  htmlBase.replace("%CLIENT%", state.clientConnected ? "1" : "0");
+  htmlBase.replace("%LASTCMD%", escapedCmd);
+
+  return htmlBase;
 }
 
 String WebUi::statusJson(const AppState& state) {
