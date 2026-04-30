@@ -40,10 +40,15 @@ private:
   // NEMA stepper: 200 full steps/rev, 16x microstepping = 3200 steps/rev
   static constexpr int kStepsPerRev = 200;
   static constexpr int kMicrosteps = 16;
+  static constexpr float azGearRatioPrimary = 17.0F;
+  static constexpr float azGearRatioSecondary = 144.0F;
+  static constexpr float elGearRatioPrimary = 21.0F;
+  static constexpr float elGearRatioSecondary = 64.0F;
+  static constexpr float elGearRatioReducer = 51.0F;
 
   // Gear ratios: motor rev per output rev
-  static constexpr float kAzGearRatio = 144.0f / 17.0f;
-  static constexpr float kElGearRatio = 64.0f / 21.0f;
+  static constexpr float kAzGearRatio = azGearRatioSecondary / azGearRatioPrimary;
+  static constexpr float kElGearRatio = (elGearRatioSecondary * elGearRatioReducer) / elGearRatioPrimary;
 
   // Effective steps per output rotation
   static constexpr long kStepsPerRotationAz = static_cast<long>(kStepsPerRev * kMicrosteps * kAzGearRatio);

@@ -9,11 +9,12 @@
 #include "OffsetStore.h"
 #include "RotctlService.h"
 #include "WifiManager.h"
+#include "WifiEnv.h"
 
 // ── Configuration ──────────────────────────────────────────────
 
-const char* ssid     = "";
-const char* password = "";
+const char* ssid     = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 
 constexpr uint8_t LED_PIN    = 2;
 constexpr uint8_t ENABLE_PIN = 5;   // D1
@@ -34,10 +35,10 @@ RotctlService rotctl(4533, appState);
 
 // ── Position auto-save state ───────────────────────────────────
 
-static float         lastSavedAz       = 0.0f;
-static float         lastSavedEl       = 0.0f;
+static float         lastSavedAz        = 0.0f;
+static float         lastSavedEl        = 0.0f;
 static unsigned long lastPositionSaveMs = 0;
-
+static int           incomingByte       = 0;
 // ── Setup & Loop ───────────────────────────────────────────────
 
 void setup() {
@@ -66,6 +67,15 @@ void setup() {
 }
 
 void loop() {
+
+  if (Serial.available() > 0) {
+    incomingByte = Serial.read();
+    if (incomingByte == 'r') {
+      Logger::info("APP", "Restarting on demand...");
+      ESP.restart();
+    }
+  }
+
   http.handleClient();
   rotctl.process();
   motorDriver.update();
