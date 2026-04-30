@@ -21,6 +21,7 @@ private:
   void sendGetPosReply(bool extendedResponse);
   void sendOk();
   void sendError(int code);
+  bool isClientConnected() const;
 
   WiFiServer server_;
   WiFiClient client_;

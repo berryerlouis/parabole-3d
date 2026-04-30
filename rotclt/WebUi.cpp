@@ -749,8 +749,6 @@ updateUI = function() {
 </script>
 </body>
 </html>
-)====";
-
 )rawliteral";
 
   

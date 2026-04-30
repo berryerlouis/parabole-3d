@@ -66,6 +66,8 @@ void setup() {
   Logger::info("APP", "Ready");
 }
 
+bool clientRtlCtlConnected_PreviousState = false;
+
 void loop() {
 
   if (Serial.available() > 0) {
@@ -78,6 +80,19 @@ void loop() {
 
   http.handleClient();
   rotctl.process();
+
+  // Enable motors only when a rotctl client is connecting or when is disconnectiong
+  // to prevent unwanted movement when not in use
+  if (clientRtlCtlConnected_PreviousState != appState.clientConnected) {
+    clientRtlCtlConnected_PreviousState = appState.clientConnected;
+    if (appState.clientConnected)
+    {
+      appState.enable = true;
+    } else {
+      appState.enable = false;
+    } 
+  }
+
   motorDriver.update();
 
   // Periodic position save to EEPROM

@@ -19,13 +19,17 @@ void RotctlService::process() {
     return;
   }
 
-  if (state_.clientConnected) {
+  if (isClientConnected()) {
     processIncomingBytes();
   }
 }
 
+bool RotctlService::isClientConnected() const {
+  return state_.clientConnected;
+}
+
 void RotctlService::acceptClientIfNeeded() {
-  if (state_.clientConnected) {
+  if (isClientConnected()) {
     return;
   }
 
