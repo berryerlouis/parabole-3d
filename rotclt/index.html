@@ -457,9 +457,9 @@ function makeCompass() {
   g.add(ring);
   const dirs = [
     {t:'N', a:0,   c:'#ef4444'},
-    {t:'E', a:90,  c:'#94a3b8'},
+    {t:'W', a:90,  c:'#94a3b8'},
     {t:'S', a:180, c:'#94a3b8'},
-    {t:'W', a:270, c:'#94a3b8'}
+    {t:'E', a:270, c:'#94a3b8'}
   ];
   dirs.forEach(d => {
     const r = d.a * Math.PI / 180;
@@ -559,14 +559,20 @@ const arrow = new THREE.ArrowHelper(
   2.5, 0x10b981, 0.35, 0.18);
 scene.add(arrow);
 
+function invertAz(az) {
+  return az;//((360 - az) % 360);
+}
+
 function setDishRotation(group, az, el) {
+  const invAz = invertAz(az);
   group.rotation.order = 'YXZ';
-  group.rotation.y = -THREE.MathUtils.degToRad(az);
+  group.rotation.y = -THREE.MathUtils.degToRad(invAz);
   group.rotation.x = -THREE.MathUtils.degToRad(el);
 }
 
 function getDishDir(az, el) {
-  const a = -THREE.MathUtils.degToRad(az);
+  const invAz = invertAz(az);
+  const a = -THREE.MathUtils.degToRad(invAz);
   const e = THREE.MathUtils.degToRad(el);
   return new THREE.Vector3(
     Math.cos(e) * Math.sin(a),
@@ -594,9 +600,9 @@ function updateUI() {
   dot.className = conn ? 'chip-dot on' : 'chip-dot off';
   document.getElementById('lastCmd').textContent = D.lastCmd ? D.lastCmd.trim() : '--';
 
-  document.getElementById('curAz').textContent = D.currentAz.toFixed(1) + '\xb0';
+  document.getElementById('curAz').textContent = invertAz(D.currentAz).toFixed(1) + '\xb0';
   document.getElementById('curEl').textContent = D.currentEl.toFixed(1) + '\xb0';
-  document.getElementById('tarAz').textContent = D.targetAz.toFixed(1) + '\xb0';
+  document.getElementById('tarAz').textContent = invertAz(D.targetAz).toFixed(1) + '\xb0';
   document.getElementById('tarEl').textContent = D.targetEl.toFixed(1) + '\xb0';
 
   const offAzInput = document.getElementById('offAz');
@@ -739,9 +745,9 @@ updateUI = function() {
   const mqEl = document.getElementById('mqEl');
   const mqTAz = document.getElementById('mqTAz');
   const mqTEl = document.getElementById('mqTEl');
-  if (mqAz) mqAz.textContent = D.currentAz.toFixed(1) + '\xb0';
+  if (mqAz) mqAz.textContent = invertAz(D.currentAz).toFixed(1) + '\xb0';
   if (mqEl) mqEl.textContent = D.currentEl.toFixed(1) + '\xb0';
-  if (mqTAz) mqTAz.textContent = D.targetAz.toFixed(1) + '\xb0';
+  if (mqTAz) mqTAz.textContent = invertAz(D.targetAz).toFixed(1) + '\xb0';
   if (mqTEl) mqTEl.textContent = D.targetEl.toFixed(1) + '\xb0';
 };
 </script>
