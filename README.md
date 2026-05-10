@@ -215,7 +215,7 @@ Open `http://<device-ip>/` in a web browser. You'll see:
   - **Manual Control:** D-pad with adjustable step size (0.5°–5°)
   - **Park:** Configure and activate a park position
 
-![UI Preview](ihm.png)
+![UI Preview](./rotclt/ihm.png)
 
 ### Satellite Tracking Software
 
